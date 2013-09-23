@@ -2,7 +2,6 @@
 var LOGGED_IN_HOME_PATH = '/';
 var LOGGED_OUT_HOME_PATH = '/';
 var BASE_DEBUG_URL = 'http://localhost:3000';
-var BASE_PROD_URL = 'http://todo.calebgomer.com';
 var LOGIN_PATH = '/login';
 var LOGIN_PATH_GOOGLE = '/login/google';
 var LOGIN_CALLBACK_PATH = '/login/google/return';
@@ -13,7 +12,7 @@ function getCallbackUrl() {
 }
 
 function getRealm() {
-  return (process.env.DEBUGGING ? BASE_DEBUG_URL : BASE_PROD_URL);
+  return process.env.APP_URL || BASE_DEBUG_URL;
 }
 
 var express = require('express')
