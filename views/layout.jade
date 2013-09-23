@@ -1,0 +1,18 @@
+!!! 5
+html
+  head
+    title Todo App
+  body
+    if user
+      p
+        a(href="/") Home
+        &nbsp;|&nbsp;
+        a(href="/account") Account
+        &nbsp;|&nbsp;
+        a(href="/logout") Log Out
+    else
+      p
+        a(href="/") Home
+        &nbsp;|&nbsp;
+        a(href="/login") Log In
+    block content
