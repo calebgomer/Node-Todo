@@ -2,17 +2,20 @@
 html
   head
     title Todo App
+    script(src="/socket.io/socket.io.js")
   body
-    if user
-      p
-        a(href="/") Home
-        &nbsp;|&nbsp;
-        a(href="/account") Account
-        &nbsp;|&nbsp;
-        a(href="/logout") Log Out
-    else
-      p
-        a(href="/") Home
-        &nbsp;|&nbsp;
-        a(href="/login") Log In
+    p
+      if user
+          if user.lists
+            each list in user.lists
+              a(href="/l/#{list.name}") #{list.name}
+              &nbsp;|&nbsp;
+          a(href="/account") Account (#{user.name})
+          &nbsp;|&nbsp;
+          a(href="/logout") Log Out
+      else
+          a(href="/") Tasks
+          &nbsp;|&nbsp;
+          a(href="/login") Log In
     block content
+    script(type='text/javascript', src='/public/js/todo.js')
