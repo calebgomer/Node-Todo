@@ -508,14 +508,14 @@ function moveTask(req, res) {
 }
 
 app.get(LOGIN_PATH_GOOGLE,
-  passport.authenticate('google', { failureRedirect: LOGIN_PATH }),
+  passport.authenticate('google', { failureRedirect: LOGGED_OUT_HOME_PATH }),
   function(req, res) {
     res.redirect(LOGGED_IN_HOME_PATH);
   }
 );
 
 app.get(LOGIN_CALLBACK_PATH,
-  passport.authenticate('google', { failureRedirect: LOGIN_PATH }),
+  passport.authenticate('google', { failureRedirect: LOGGED_OUT_HOME_PATH }),
   function(req, res) {
     res.redirect(LOGGED_IN_HOME_PATH);
   }
@@ -530,7 +530,7 @@ function ensureAuthenticated(req, res, next) {
   if (req.isAuthenticated()) {
     return next();
   }
-  res.redirect(LOGIN_PATH);
+  res.redirect(LOGGED_OUT_HOME_PATH);
 }
 
 function ensureLists(req, res, next) {
