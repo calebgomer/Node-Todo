@@ -9,6 +9,10 @@ var passport = require('passport');
 // var util = require('util');
 var GoogleStrategy = require('passport-google').Strategy;
 var mongo = require('mongodb');
+var googleapis = require('googleapis');
+var OAuth2Client = googleapis.OAuth2Client;
+var oauth2Client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID,process.env.GOOGLE_CLIENT_SECRET);
+var google = require('node-google-api')(process.env.GOOGLE_API_KEY);
 
 var mongoUri = process.env.MONGOHQ_URL;
 var Users;
@@ -42,23 +46,26 @@ if (process.env.HEROKU) {
 io.set('log level', 1);
 io.sockets.on('connection', function(socket) {
   var user = socket.handshake && socket.handshake.user && socket.handshake.user.userid;
+  if (!user) {
+    return socket.emit('unauthorized', 'you are not logged in somehow');
+  }
 
-  socket.on('newList', function(data) {
+  socket.on('newList', function(data, callback) {
     var list = data && data.list;
     if (list) {
       _addList(user, list, function(err, result) {
         if (err) {
-          socket.emit('newList', {success: false, message: err});
+          callback({success: false, message: err});
         } else {
-          socket.emit('newList', {success: true, message: result, list: list});
+          callback({success: true, message: result, list: list});
         }
       });
     } else {
-      socket.emit('newList', {success: false, message: 'new list needs a name!'});
+      callback({success: false, message: 'new list needs a name!'});
     }
   });
 
-  socket.on('newTask', function(data) {
+  socket.on('newTask', function(data, callback) {
     var list = data && data.list;
     var name = data && data.name;
     var note = data && data.note;
@@ -68,44 +75,62 @@ io.sockets.on('connection', function(socket) {
       var task = new Task(name, note, tags);
       _addTask(user, list, task, function(err, result) {
         if (err) {
-          socket.emit('newTask', {success: false, message: err});
+          callback({success: false, message: err});
         } else {
-          socket.emit('newTask', {success: true, message: result, newTask: task});
+          callback({success: true, message: result, newTask: task});
         }
       });
     } else {
-      socket.emit('newTask', {success: false, message: 'incorrect arguments'});
+      callback({success: false, message: 'new tasks need a list and name'});
     }
   });
 
-  socket.on('removeTask', function(data) {
+  socket.on('toggleComplete', function(data, callback) {
+    var list = data && data.list;
+    var taskPosition = data && data.taskPosition;
+    var completed = data && data.completed;
+
+    if (list && taskPosition) {
+      _toggleTaskComplete(user, list, taskPosition, completed, function(err, result) {
+        if (err) {
+          callback({success: false, message: err});
+        } else {
+          callback({success: true, message: result});
+        }
+      });
+    } else {
+      callback({success: false, message: 'I need a list and task position'});
+    }
+  });
+
+  socket.on('removeTask', function(data, callback) {
     var list = data && data.list;
     var taskPosition = data && data.taskPosition;
     if (list && taskPosition >= 0) {
       _deleteTask(user, list, taskPosition, function(err, result) {
         if (err) {
-          socket.emit('removeTask', {success: false, message: err});
+          callback({success: false, message: err});
         } else {
-          socket.emit('removeTask', {success: true, message: result});
+          callback({success: true, message: result});
         }
       });
     } else {
-      socket.emit('removeTask', {success: false, message: 'what task and list?!'});
+      callback({success: false, message: 'what task and list?!'});
     }
   });
 
-  socket.on('getTasks', function(data) {
+  socket.on('getTasks', function(data, callback) {
     var list = data && data.list;
     if (list) {
       _getTasks(user, list, function(err, tasks) {
         if (err) {
-          socket.emit('tasks', {success: false, message: err});
+          callback({success: false, message: err});
         } else {
-          socket.emit('tasks', {success: true, list: list, tasks: tasks});
+          callback({success: true, list: list, tasks: tasks});
         }
       });
     } else {
-      socket.emit('tasks', {success: false, message: 'what list do you want?!'});
+      callback({success: false, message: 'what list do you want?!'});
     }
   });
 });
@@ -210,6 +235,11 @@ function _removeList(user, name, callback) {
 }
 
 function _renameList(user, oldname, name, callback) {
+  if (!user, !oldname, !name) {
+    if (callback) {
+      return callback('invalid inputs');
+    }
+  }
   findListCollection(function(err) {
     if (err) {
       console.log('error getting lists collection',err);
@@ -220,6 +250,11 @@ function _renameList(user, oldname, name, callback) {
 }
 
 function _addTask(user, list, task, callback) {
+  if (!user || !list || !task) {
+    if (callback) {
+      return callback('invalid inputs');
+    }
+  }
   _getTasks(user, list, function(err, tasks) {
     tasks.push(task);
     _updateListTasks(user, list, tasks, function(err, result) {
@@ -232,7 +267,60 @@ function _addTask(user, list, task, callback) {
   });
 }
 
+function _updateTask(user, list, newTask, taskPosition, callback) {
+  if (!user || !list || !newTask || !taskPosition || taskPosition < 0) {
+    if (callback) {
+      return callback('invalid inputs');
+    }
+  }
+  _getTasks(user, list, function(err, tasks) {
+    if (tasks.length > taskPosition) {
+      tasks[taskPosition] = newTask;
+      _updateListTasks(user, list, tasks, function(err, result) {
+        if (err) {
+          callback('problem updating task');
+        } else {
+          callback(null, result);
+        }
+      });
+    } else {
+      callback('task list is that long!');
+    }
+  });
+}
+
+function _toggleTaskComplete(user, list, taskPosition, completed, callback) {
+  if (!user || !list || !taskPosition || taskPosition < 0) {
+    if (callback) {
+      return callback('invalid inputs');
+    }
+  }
+  _getTasks(user, list, function(err, tasks) {
+    if (tasks.length > taskPosition) {
+      if (completed === undefined) {
+        tasks[taskPosition].completed = !tasks[taskPosition].completed;
+      } else {
+        tasks[taskPosition].completed = completed;
+      }
+      _updateListTasks(user, list, tasks, function(err, result) {
+        if (err) {
+          callback('problem updating task');
+        } else {
+          callback(null, result);
+        }
+      });
+    } else {
+      callback('task list is that long!');
+    }
+  });
+}
+
 function _deleteTask(user, list, taskPosition, callback) {
+  if (!user || !list || !taskPosition || taskPosition < 0) {
+    if (callback) {
+      return callback('invalid inputs');
+    }
+  }
   _getTasks(user, list, function(err, tasks) {
     if (taskPosition >= 0 && tasks.length > taskPosition) {
       tasks.splice(taskPosition, 1);
@@ -250,19 +338,41 @@ function _deleteTask(user, list, taskPosition, callback) {
 }
 
 function _getTasks(user, name, callback) {
-  if (name) {
-    _getList(user, name, function(err, result) {
-      if (err) {
-        callback('problem getting list');
-      } else if (result) {
-        callback(null, result.tasks);
-      } else {
-        callback('this list doesn\'t exist');
-      }
-    });
-  } else {
-    callback('no task name!');
+  if (!user || !name) {
+    if (callback) {
+      callback('invalid inputs');
+    }
   }
+  _getList(user, name, function(err, result) {
+    if (err) {
+      callback('problem getting list');
+    } else if (result) {
+      callback(null, result.tasks);
+    } else {
+      callback('this list doesn\'t exist');
+    }
+  });
+}
+
+function _getTask(user, name, taskPosition, callback) {
+  if (!user || !name || !taskPosition) {
+    if (callback) {
+      callback('invalid inputs');
+    }
+  }
+  _getList(user, name, function(err, result) {
+    if (err) {
+      callback('problem getting list');
+    } else if (result) {
+      if (result.tasks && result.tasks.length > taskPosition) {
+        callback(null, result.tasks[taskPosition]);
+      } else {
+        callback('that task does not exist');
+      }
+    } else {
+      callback('this list doesn\'t exist');
+    }
+  });
 }
 
 function _updateListTasks(user, name, tasks, callback) {
@@ -299,7 +409,7 @@ function _moveTask(user, list, from, to, callback) {
 }
 
 // task format
-function Task(name, note, tags) {
+function Task(name, note, tags, completed) {
   this.name = name || 'untitled';
   this.note = note || '';
   if (tags) {
@@ -311,6 +421,7 @@ function Task(name, note, tags) {
   } else {
     this.tags = [];
   }
+  this.completed = completed || false;
 }
 
 function getCallbackUrl() {
@@ -376,7 +487,7 @@ app.configure(function() {
   app.set('port', process.env.PORT || 3000);
   app.set('views', __dirname + '/views');
   app.set('view engine', 'jade');
-  app.use(express.logger());
+  // app.use(express.logger());
   app.use(express.cookieParser());
   app.use(express.bodyParser());
   app.use(express.session({
@@ -399,18 +510,26 @@ app.get('/rn/:oldname/:name', ensureAuthenticated, ensureLists, renameList);
 app.get('/n/:name', ensureAuthenticated, ensureLists, addList);
 app.get('/t/:list/:name/:note/:tags', ensureAuthenticated, ensureLists, newTask);
 app.get('/mv/:list/:from/:to', ensureAuthenticated, ensureLists, moveTask);
+app.get('/token/:token', function(req, res) {
+  var token = req.params && req.params.token;
+  console.log('token', token);
+  api.plus.people.get({ userId: 'me', fields: ['displayName','id','image','name'], access_token: token}, function(response) {
+    console.log(response);
+    res.send('Your response is: '+response.displayName);
+  });
+});
 
 function home(req, res) {
   console.log(req.user);
-  res.render('home', { user: req.user, lists:[{id:1234, name:'beers'}, {id:5678, name:'homework'}] });
+  res.render('home', { user: req.user });
 };
 
 function account(req, res) {
-  res.render('account', { user: req.user, lists:[{id:1234, name:'beers'}, {id:5678, name:'homework'}] });
+  res.render('account', { user: req.user });
 }
 
 function login(req, res) {
-  res.render('login', { user: req.user, lists:[{id:1234, name:'beers'}, {id:5678, name:'homework'}] });
+  res.render('login', { user: req.user });
 }
 
 function getLists(req, res) {
@@ -432,7 +551,7 @@ function getList(req, res) {
       if (err) {
         res.send({error: err});
       } else if (result && result.tasks) {
-        res.render('list', { user: req.user, tasks: result.tasks });
+        res.render('list', { user: req.user, tasks: result.tasks, currentList: name });
       } else {
         res.redirect('/');
       }
@@ -546,4 +665,9 @@ function ensureLists(req, res, next) {
 
 server.listen(app.get('port'), function() {
   console.log("ready on port " + app.get('port'));
+});
+
+var api;
+google.build(function(googleapi) {
+  api = googleapi;
 });

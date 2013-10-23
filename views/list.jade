@@ -1,8 +1,18 @@
 extends layout
 
 block content
-  each task in tasks
-    span #{task.name}:
-    each tag in task.tags
-      span #{tag}&nbsp;
-    br
+  - if(typeof(currentList) !== 'undefined')
+    script(type='text/javascript')
+      CURRENT_LIST = '#{currentList}'
+  each task,i in tasks
+    .panel.panel-default.task(id='select-task:#{i}')
+      .remove-box.pull-right.task-action-icon.delete-task(id='delete-task:#{i}') X
+      .edit-box.pull-right.task-action-icon.edit-task(id='edit-task:#{i}') E
+      h1.center-vertical #{task.name}&nbsp;
+        small #{task.note}
+      if task.completed
+        h1 hello
+      each tag in task.tags
+        .label.label-primary
+          span #{tag}
+            span.glyphicon.glyphicon-tag

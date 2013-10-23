@@ -2,20 +2,58 @@
 html
   head
     title Todo App
+    meta(name="viewport", content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no")
+    link(rel='stylesheet', href='http://netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap.min.css')
+    script(src='http://codeorigin.jquery.com/jquery-2.0.3.min.js')
+    script(src='http://netdna.bootstrapcdn.com/bootstrap/3.0.0/js/bootstrap.min.js')
+    link(href='//netdna.bootstrapcdn.com/font-awesome/3.2.1/css/font-awesome.css', rel='stylesheet')
     script(src="/socket.io/socket.io.js")
-  body
-    p
-      if user
-          if user.lists
-            each list in user.lists
-              a(href="/l/#{list.name}") #{list.name}
-              &nbsp;|&nbsp;
-          a(href="/account") Account (#{user.name})
-          &nbsp;|&nbsp;
-          a(href="/logout") Log Out
-      else
-          a(href="/") Tasks
-          &nbsp;|&nbsp;
-          a(href="/login/google") Log In
-    block content
+    link(href='/public/css/todo.css', rel='stylesheet')
+  body(style='padding-top: 70px;')
+    #wrap
+      nav.navbar.navbar-default.navbar-fixed-top(role='navigation')
+        .container
+          .navbar-header
+              button.navbar-toggle(type='button', data-toggle='collapse', data-target='.navbar-ex4-collapse')
+                span.sr-only Toggle navigation
+                span.icon-bar
+                span.icon-bar
+                span.icon-bar
+              - if(typeof(currentList) !== 'undefined')
+                a.navbar-brand.visible-xs(href='/') #{currentList}
+                a.navbar-brand.hidden-xs(href='/') Todo
+              - else
+                a.navbar-brand(href='/') Todo
+              .pull-right
+                if user
+                    .btn-group
+                      button#newList.btn.btn-default.navbar-btn(type='button')
+                        span.hidden-xs New List
+                        i.visible-xs.icon-plus
+                      button#renameList.btn.btn-default.navbar-btn(type='button')
+                        span.hidden-xs Rename List
+                        i.visible-xs.icon-pencil
+                      button#deleteList.btn.btn-danger.navbar-btn(type='button')
+                        span.hidden-xs Delete List
+                        i.visible-xs.icon-remove
+                    &nbsp;
+                    button#logOut.pull-right.btn.btn-default.navbar-btn(type='button')
+                      span.hidden-xs Log Out
+                      i.visible-xs.icon-user
+                else
+                  button#logIn.btn.btn-default.navbar-btn(type='button')
+                    span.hidden-xs Log In
+                    i.visible-xs.icon-user
+            .collapse.navbar-collapse.navbar-ex4-collapse
+              if user && user.lists
+                ul.nav.navbar-nav
+                  each list in user.lists
+                    li
+                      a(href='/l/#{list.name}') #{list.name}
+      .container
+        block content
+  - if(typeof(currentList) !== 'undefined')
+      #footer
+        .container
+          input#newTask.form-control(type='text', placeholder="New Task")
     script(type='text/javascript', src='/public/js/todo.js')

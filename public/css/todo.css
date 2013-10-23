@@ -1,0 +1,72 @@
+.task-action-icon {
+  font-size: 5em;
+  vertical-align: center;
+  text-align: center;
+  height: 10em;
+  width: 1em;
+  height: 100%;
+  line-height: 100%;
+  right: 0px;
+  top: 0px;
+  color: white;
+}
+
+.task {
+  min-height: 5em;
+  overflow: hidden;
+}
+
+.center-vertical {
+  vertical-align: center;
+}
+
+.remove-box {
+  color:#fff;
+  background-color:#d9534f;
+  border-color:#d43f3a;
+}
+.remove-box:hover,.remove-box:focus,.remove-box:active,.remove-box.active {
+  color:#fff;
+  background-color:#d2322d;
+  border-color:#ac2925;
+}
+
+.edit-box{
+  border-bottom-left-radius: 5px;
+  color:#fff;
+  background-color:#5bc0de;
+  border-color:#46b8da;
+}
+.edit-box:hover,.edit-box:focus,.edit-box:active,.edit-box.active {
+  color:#fff;
+  background-color:#39b3d7;
+  border-color:#269abc;
+}
+
+#newTask {
+  bottom: 0px;
+  margin-top: 10px;
+}
+
+html,
+body {
+  height: 100%;
+  /* The html and body elements cannot have any padding or margin. */
+}
+
+/* Wrapper for page content to push down footer */
+#wrap {
+  min-height: 100%;
+  height: auto !important;
+  height: 100%;
+  /* Negative indent footer by its height */
+  margin: 0 auto -60px;
+  /* Pad bottom by footer height */
+  padding: 0 0 60px;
+}
+
+/* Set the fixed height of the footer here */
+#footer {
+  height: 60px;
+  background-color: #f5f5f5;
+}
